@@ -3,7 +3,7 @@ import React from 'react';
 
 export const CEREBRAS_MODEL_NAME = 'qwen-3-32b';
 export const CEREBRAS_API_KEY_ENV_VAR = 'CEREBRAS_API_KEY';
-export const DEFAULT_SYSTEM_PROMPT = "Вы полезный ИИ-ассистент по имени Нейрочат. Отвечайте развернуто и дружелюбно на русском языке.";
+export const DEFAULT_SYSTEM_PROMPT = "Вы полезный ИИ-ассистент по имени Нейрочат. Отвечайте развернуто и дружелюбно на русском языке. Вы можете читать текстовые файлы, PDF-документы и код. Если пользователь прикрепляет файл, внимательно изучите его содержимое и помогите с вопросами.";
 
 // Icons remain the same
 export const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
