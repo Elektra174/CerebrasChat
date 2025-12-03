@@ -1,0 +1,9 @@
+
+{
+  "name": "Нейрочат - Novita AI Chat",
+  "description": "Интеллектуальный чат-ассистент на базе Novita AI API с поддержкой текстового и голосового ввода, а также прикрепления файлов.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}
