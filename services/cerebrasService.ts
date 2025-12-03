@@ -1,28 +1,9 @@
 import { Message, MessageRole, FileAttachment } from '../types';
-import { CEREBRAS_MODEL_NAME, DEFAULT_SYSTEM_PROMPT, CEREBRAS_API_KEY_ENV_VAR } from '../constants';
+import { CEREBRAS_MODEL_NAME, DEFAULT_SYSTEM_PROMPT } from '../constants';
 
-const CEREBRAS_API_BASE_URL = "https://api.cerebras.ai/v1";
-const CEREBRAS_CHAT_COMPLETIONS_ENDPOINT = "/chat/completions";
-
-let cerebrasApiKey: string | null = null;
-let serviceInitialized = false;
-
-const getApiKey = (): string | null => {
-  const apiKey = process.env[CEREBRAS_API_KEY_ENV_VAR];
-  if (!apiKey) {
-    console.error(`${CEREBRAS_API_KEY_ENV_VAR} environment variable not found.`);
-    return null;
-  }
-  return apiKey;
-};
+const API_ENDPOINT = "/api/chat";
 
 export const initializeCerebrasService = (): boolean => {
-  cerebrasApiKey = getApiKey();
-  if (!cerebrasApiKey) {
-    serviceInitialized = false;
-    return false;
-  }
-  serviceInitialized = true;
   return true;
 };
 
@@ -52,15 +33,6 @@ export const sendMessageToCerebrasStream = async (
   onError: (error: string) => void,
   fileAttachment?: FileAttachment
 ): Promise<string> => {
-  if (!serviceInitialized && !initializeCerebrasService()) {
-    onError(`Сервис Cerebras AI не инициализирован. Проверьте ${CEREBRAS_API_KEY_ENV_VAR}.`);
-    return "";
-  }
-  if (!cerebrasApiKey) {
-    onError(`${CEREBRAS_API_KEY_ENV_VAR} не найден.`);
-    return "";
-  }
-
   let requestContent = userInput;
   if (fileAttachment) {
     if (fileAttachment.type.startsWith('image/')) {
@@ -82,16 +54,15 @@ export const sendMessageToCerebrasStream = async (
     model: CEREBRAS_MODEL_NAME,
     messages: messagesPayload,
     stream: true,
-    max_completion_tokens: 65536,
-    temperature: 1,
-    top_p: 1
+    max_completion_tokens: 40960,
+    temperature: 0.6,
+    top_p: 0.95
   };
 
   try {
-    const response = await fetch(`${CEREBRAS_API_BASE_URL}${CEREBRAS_CHAT_COMPLETIONS_ENDPOINT}`, {
+    const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${cerebrasApiKey}`,
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream'
       },
@@ -100,7 +71,7 @@ export const sendMessageToCerebrasStream = async (
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(`Ошибка API Cerebras: ${response.status} ${errorData.message || ''}`);
+      throw new Error(`Ошибка API: ${response.status} ${errorData.error || errorData.message || ''}`);
     }
 
     if (!response.body) {
@@ -137,7 +108,6 @@ export const sendMessageToCerebrasStream = async (
               }
             }
           } catch (e) {
-            // Skip non-JSON lines
           }
         }
       }
@@ -146,17 +116,17 @@ export const sendMessageToCerebrasStream = async (
     return removeThinkingTags(fullResponseText);
 
   } catch (error: any) {
-    console.error("Ошибка при отправке сообщения в Cerebras AI:", error);
+    console.error("Ошибка при отправке сообщения:", error);
     let errorMessage = "Произошла ошибка при общении с ИИ.";
     if (error.message) {
       errorMessage += ` Детали: ${error.message}`;
     }
     if (error.message && error.message.includes("Failed to fetch")) {
-      errorMessage = "Не удалось подключиться к API Cerebras. Проверьте ваше интернет-соединение.";
+      errorMessage = "Не удалось подключиться к серверу. Проверьте ваше интернет-соединение.";
     } else if (error.message && (error.message.toLowerCase().includes("unauthorized") || error.message.includes("401"))) {
-      errorMessage = `Ошибка авторизации Cerebras AI. Проверьте ваш ${CEREBRAS_API_KEY_ENV_VAR}.`;
+      errorMessage = "Ошибка авторизации. Проверьте API ключ на сервере.";
     } else if (error.message && error.message.toLowerCase().includes("quota")) {
-      errorMessage = "Превышена квота API Cerebras. Пожалуйста, проверьте ваш биллинг или лимиты.";
+      errorMessage = "Превышена квота API. Пожалуйста, проверьте ваш биллинг или лимиты.";
     }
     onError(errorMessage);
     return "";
@@ -167,11 +137,11 @@ export const extractFileAttachmentForPreview = async (file: File): Promise<FileA
   return new Promise((resolve) => {
     const reader = new FileReader();
     
-    if (file.type.startsWith('text/')) {
+    if (file.type.startsWith('text/') || file.name.match(/\.(js|ts|tsx|jsx|py|java|cpp|c|h|css|html|json|md|xml|yaml|yml|sh|sql|go|rs|php|rb|swift|kt)$/i)) {
       reader.onload = (e) => {
         resolve({
           name: file.name,
-          type: file.type,
+          type: file.type || 'text/plain',
           content: e.target?.result as string,
         });
       };
@@ -188,6 +158,12 @@ export const extractFileAttachmentForPreview = async (file: File): Promise<FileA
       };
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(file); 
+    } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      resolve({
+        name: file.name,
+        type: 'application/pdf',
+        content: `[PDF файл: ${file.name}. Для анализа PDF требуется модель с поддержкой vision. Cerebras AI может работать только с текстовыми данными.]`,
+      });
     } else {
       resolve({
         name: file.name,

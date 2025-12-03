@@ -10,7 +10,7 @@ A beautiful Russian-language chat application powered by Cerebras AI with a mode
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS with custom glassmorphism effects
 - **AI Provider**: Cerebras AI (OpenAI-compatible API)
-- **Model**: qwen-3-32b
+- **Model**: zai-glm-4.6
 
 ### Project Structure
 ```

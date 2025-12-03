@@ -3,7 +3,7 @@ import { ChatSession, Message, MessageRole, FileAttachment } from './types';
 import ChatMessage from './components/ChatMessage';
 import ChatInputBar from './components/ChatInputBar';
 import { initializeCerebrasService, sendMessageToCerebrasStream } from './services/cerebrasService'; 
-import { IconPlus, IconTrash, IconMenu, IconClose, IconSparkles, CEREBRAS_API_KEY_ENV_VAR } from './constants';
+import { IconPlus, IconTrash, IconMenu, IconClose, IconSparkles } from './constants';
 
 const App: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -18,9 +18,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const initialized = initializeCerebrasService();
     setServiceInitialized(initialized);
-    if (!initialized && !process.env[CEREBRAS_API_KEY_ENV_VAR]) {
-      setErrorMessage(`API ключ не настроен. Установите ${CEREBRAS_API_KEY_ENV_VAR}.`);
-    }
 
     const storedSessions = localStorage.getItem('chatSessionsCerebras');
     if (storedSessions) {
@@ -64,10 +61,6 @@ const App: React.FC = () => {
   }, [sessions, activeSessionId, isLoading]);
 
   const createNewSession = useCallback(() => {
-    if (!serviceInitialized && !process.env[CEREBRAS_API_KEY_ENV_VAR]) {
-       setErrorMessage(`Невозможно создать чат: API ключ не настроен.`);
-       return;
-    }
     setErrorMessage(null);
     const newSession: ChatSession = {
       id: Date.now().toString(),
